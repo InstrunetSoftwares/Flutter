@@ -186,6 +186,8 @@ class _UploadPageState extends State<UploadPage> with AutomaticKeepAliveClientMi
 }
 
 class ProfilePage extends StatefulWidget{
+  const ProfilePage({super.key});
+
   @override
   State<StatefulWidget> createState() => _ProfilePageState();
 }
