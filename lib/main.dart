@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,14 +23,6 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   int pageIndex = 0;
   late PageController pageController = PageController(initialPage: pageIndex);
-  @override
-  void setState(VoidCallback fn) {
-    super.setState(fn);
-    if (kDebugMode) {
-      print(pageIndex);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     Scaffold s = Scaffold(
@@ -79,40 +72,74 @@ class UploadPage extends StatefulWidget{
   @override
   State<UploadPage> createState() => _UploadPageState();
 }
+class Metadata{
+  String? title;
+  String? album;
+  String? artist;
+  List<Picture> image;
+  Metadata(this.title, this.album, this.artist, this.image);
+}
 class _UploadPageState extends State<UploadPage> with AutomaticKeepAliveClientMixin<UploadPage> {
   File? selected;
+  Metadata? metaData;
+  final Map<String, TextEditingController> _controllers = {"title": TextEditingController(), "artist": TextEditingController(),"album": TextEditingController()};
+  bool validation = false;
+  @override
+  void initState() {
+    super.initState();
+    _controllers["title"]!.addListener((){
+      if(_controllers["title"]!.text.isNotEmpty){
+        setState(() {
+          validation = true;
+        });
+      }else{
+        setState(() {
+          validation = false;
+        });
+      }
+    });
+  }
+  @override
+  void dispose() {
+    for (var value in _controllers.values) {
+      value.dispose();
+    }
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if(selected != null){
+    if(selected != null || metaData != null){
       return Center(
         child: Card(
           child: Container(
-            constraints: BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: 700),
             child: IntrinsicHeight(
               child: Column(
                 children: [
                   Align(alignment: AlignmentGeometry.topRight,child: IconButton(onPressed: (){
                     setState(() {
                       selected = null;
+                      metaData = null;
                     });
                   }, icon: Icon(Icons.close))),
                   Container(
                     padding: EdgeInsets.all(10.0),
                     child: Row(
+                      spacing: 10.0,
                       children: [
                         Expanded(
-                          child: Text("data"),
+                          child: metaData != null ? Image.memory(metaData!.image[0].bytes) : Text("无封面"),
                         ),
                         Expanded(
                           child: IntrinsicHeight(
                             child: Column(
-                              spacing: 4.0,
+                              spacing: 10.0,
                               children: [
-                                TextField(decoration: InputDecoration(hintText: "歌名",border: OutlineInputBorder()),),
-                                TextField(decoration: InputDecoration(hintText: "艺术家",border: OutlineInputBorder()),),
-                                TextField(decoration: InputDecoration(hintText: "专辑",border: OutlineInputBorder()),),
-                                TextField(decoration: InputDecoration(hintText: "文件",border: OutlineInputBorder()),),
+                                TextField(controller: _controllers["title"]!,decoration: InputDecoration(labelText: "歌名",border: OutlineInputBorder(), errorText: validation ? null :"歌曲名不可为空" ),),
+                                TextField(controller: _controllers["artist"]!, decoration: InputDecoration(labelText: "艺术家",border: OutlineInputBorder()),),
+                                TextField(controller: _controllers["album"]! , decoration: InputDecoration(labelText: "专辑",border: OutlineInputBorder()),),
+                                ElevatedButton(onPressed: (){}, child: IntrinsicWidth(child: Row(children: [Icon(Icons.upload), Text("上传")],)))
                               ],
                             ),
                           ),
@@ -131,7 +158,13 @@ class _UploadPageState extends State<UploadPage> with AutomaticKeepAliveClientMi
         FilePicker.platform.pickFiles(allowMultiple: false, type: FileType.custom, allowedExtensions: ["aac", "midi", "mp3", "ogg", "wav", "m4a", "flac"]).then((result) => {
           if(result != null){
             setState(() {
-              selected = File(result.files.single.path!);
+              final f = File(result.files.single.path!);
+              selected = f;
+              final metadata = readMetadata(f, getImage: true);
+              metaData = Metadata(metadata.title, metadata.album, metadata.artist, metadata.pictures);
+              _controllers["title"]!.text = metadata.title ?? "";
+              _controllers["album"]!.text = metadata.album ?? "未知专辑";
+              _controllers["artist"]!.text = metadata.artist ?? "未知艺术家";
             })
           }
         });
@@ -150,3 +183,5 @@ class _UploadPageState extends State<UploadPage> with AutomaticKeepAliveClientMi
   @override
   bool get wantKeepAlive => true;
 }
+
+

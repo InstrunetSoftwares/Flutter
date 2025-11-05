@@ -7,9 +7,11 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
+  audio_metadata_reader: ^1.4.2
   file_picker: ^10.3.3
   flutter:
     sdk: flutter
+  flutter_hooks: ^0.21.3+1
   window_size:
     git:
       url: https://github.com/google/flutter-desktop-embedding
