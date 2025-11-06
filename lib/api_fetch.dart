@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:darq/darq.dart';
 import 'package:http/http.dart' as http;
 import 'package:json_annotation/json_annotation.dart';
-part 'apiFetch.g.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+part 'api_fetch.g.dart';
 @JsonSerializable()
 class User{
   String uuid;
@@ -19,7 +20,8 @@ class User{
 
 }
 class WebRequest{
-  static Future<String> login(String api, String username, String password)async {
+  // Huge side-effect. Sets session_string in shared_preference.
+  static Future<void> login(String api, String username, String password)async {
     final res = await http.post("$api/login".toUri(), body: json.encode({"username": username, "password": password }), headers: {"Content-Type": "application/json"});
     if(res.statusCode == 200){
       final cookies = res.headers['set-cookie'];
@@ -29,7 +31,8 @@ class WebRequest{
         if(sessionValue == null){
           throw Exception("Login failed: No session cookie received. ");
         }
-        return sessionValue;
+        final pref = await SharedPreferences.getInstance();
+        await pref.setString(".AspNetCore.Session=", sessionValue);
       }else{
         throw Exception("Login failed: No session cookie received. ");
       }
@@ -51,11 +54,7 @@ class WebRequest{
     }
   }
 }
-void main() async {
-  final session = await WebRequest.login("http://localhost:5298", "xiey0", "moyingren2015");
-  final s = await WebRequest.fetchUser("http://localhost:5298", session);
-  print(s);
-}
+
 
 extension on String {
   Uri toUri() {

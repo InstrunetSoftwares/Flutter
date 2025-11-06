@@ -18,6 +18,7 @@ dependencies:
   http: ^1.5.0
   json_annotation: ^4.9.0
   json_serializable: ^6.9.5
+  shared_preferences: ^2.5.3
   window_size:
     git:
       url: https://github.com/google/flutter-desktop-embedding

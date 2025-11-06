@@ -4,7 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:instrunet_mobile/api_fetch.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_size/window_size.dart';
+import 'package:darq/darq.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +37,8 @@ class _MainAppState extends State<MainApp> {
             UploadPage(),
             Center(child: Text("Search")),
             Center(child: Text("Settings")),
-            ProfilePage()
+            ProfilePage(),
+            TestPage()
           ],
         ),
 
@@ -50,6 +54,7 @@ class _MainAppState extends State<MainApp> {
             icon: Icon(Icons.person),
             label: "个人",
           ),
+          NavigationDestination(icon: Icon(Icons.science), label: "Test page")
 
         ],
         selectedIndex: pageIndex,
@@ -196,6 +201,42 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Column(
       children: [],
+    );
+  }
+}
+
+class TestPage extends StatefulWidget {
+  const TestPage({super.key});
+
+  @override
+  State<TestPage> createState() => _TestPageState();
+}
+
+class _TestPageState extends State<TestPage> {
+  void _runTest() async {
+    await WebRequest.login("http://localhost:5298", "xiey0", "moyingren2015");
+    final pref = await SharedPreferences.getInstance();
+
+    final s = await WebRequest.fetchUser("http://localhost:5298", pref.getString(".AspNetCore.Session=")!);
+
+    if (kDebugMode) {
+      print("$s, ${pref.getKeys().select((s, i){
+        return {
+          s:
+          pref.getString(s)
+        };
+      })}");
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+    _runTest();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text("This is a test page."),
     );
   }
 }

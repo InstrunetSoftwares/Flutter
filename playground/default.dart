@@ -1,12 +1,11 @@
-import 'dart:io';
+import 'package:instrunet_mobile/api_fetch.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:audio_metadata_reader/audio_metadata_reader.dart';
+void main() async {
+  await WebRequest.login("http://localhost:5298", "xiey0", "moyingren2015");
+  final pref = await SharedPreferences.getInstance();
 
-void main(){
-  final track = File("playground/test_material.flac");
-  print("Current File: ${track.path} with ${track.lengthSync()} bytes long. ");
-  final metadata = readMetadata(track, getImage: true);
-  final picture = File("playground/test_material.jpg");
-  picture.writeAsBytes(metadata.pictures[0].bytes, mode: FileMode.write, flush: true);
-  print("Title: ${metadata.title}\nAlbum: ${metadata.album}");
+  final s = await WebRequest.fetchUser("http://localhost:5298", pref.getString(".AspNetCore.Session=")!);
+
+  print("$s, ${pref.getKeys()}");
 }
