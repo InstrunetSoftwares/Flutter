@@ -8,12 +8,16 @@ environment:
 
 dependencies:
   audio_metadata_reader: ^1.4.2
+  build_runner: ^2.5.4
   darq: ^2.1.0
   file_picker: ^10.3.3
   flutter:
     sdk: flutter
+  flutter_data: ^2.0.0
   flutter_hooks: ^0.21.3+1
   http: ^1.5.0
+  json_annotation: ^4.9.0
+  json_serializable: ^6.9.5
   window_size:
     git:
       url: https://github.com/google/flutter-desktop-embedding
