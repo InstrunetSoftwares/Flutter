@@ -20,8 +20,8 @@ class User{
 
 }
 class WebRequest{
-  // Huge side-effect. Sets session_string in shared_preference.
-  static Future<void> login(String api, String username, String password)async {
+  /// Huge side-effect. Sets session_string in shared_preference.
+  static Future<void> login({required String api, required String username, required String password})async {
     final res = await http.post("$api/login".toUri(), body: json.encode({"username": username, "password": password }), headers: {"Content-Type": "application/json"});
     if(res.statusCode == 200){
       final cookies = res.headers['set-cookie'];
@@ -40,8 +40,12 @@ class WebRequest{
       throw Exception("Login failed: ${res.statusCode} ");
     }
   }
-  static Future<User> fetchUser(String api, String sessionId) async {
-    final res = await http.get("$api/userapi".toUri(), headers: {"Cookie": ".AspNetCore.Session=$sessionId"});
+  static Future<User> fetchUser({required String api}) async {
+    final shared = (await SharedPreferences.getInstance()).getString(".AspNetCore.Session=");
+    if(shared == null || shared.isEmpty){
+      throw Exception("Failed to fetch userapi: No session cookie stored. ");
+    }
+    final res = await http.get("$api/userapi".toUri(), headers: {"Cookie": ".AspNetCore.Session=$shared"});
     if(res.statusCode == 200){
       return User.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
     }else{

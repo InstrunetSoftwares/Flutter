@@ -4,7 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:instrunet_mobile/api_fetch.dart';
+import 'package:instrunet_mobile/components/profile_card.dart';
+import 'package:instrunet_mobile/singletons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_size/window_size.dart';
 import 'package:darq/darq.dart';
@@ -196,13 +199,151 @@ class ProfilePage extends StatefulWidget{
   @override
   State<StatefulWidget> createState() => _ProfilePageState();
 }
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage> with AutomaticKeepAliveClientMixin<ProfilePage> {
+  var _loggingIn = false;
+  var _usernameValidation = false;
+  // var _passwordValidation = false;
+
+  get allValidation => _usernameValidation; // && _passwordValidation;
+  final _dialogUsernameTextController = TextEditingController();
+  final _dialogPasswordTextController = TextEditingController();
+  late Future<User> user;
+  var dialogSetState;
+  @override
+  void initState() {
+    super.initState();
+    if (kDebugMode) {
+      print("state reinited. ");
+    }
+    _dialogUsernameTextController.addListener((){
+      if (kDebugMode) {
+        print(_dialogUsernameTextController.text);
+      }
+      if(_dialogUsernameTextController.text.isEmpty){
+        dialogSetState((){
+          _usernameValidation = false;
+        });
+      }else{
+        dialogSetState((){
+          _usernameValidation = true;
+        });
+      }
+    });
+    user = WebRequest.fetchUser(api: Singletons.apiAddress);
+    // _dialogPasswordTextController.addListener((){
+    //   if(_dialogPasswordTextController.text.isEmpty){
+    //     _passwordValidation = false;
+    //   }else{
+    //     _passwordValidation = true;
+    //   }
+    //
+    // });
+
+  }
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [],
+    super.build(context);
+
+    return FutureBuilder(
+        future: user,
+        builder: (context, snapshot) {
+          switch(snapshot.connectionState){
+            case ConnectionState.waiting:
+            case ConnectionState.none:
+            case ConnectionState.active:
+              return Center(child: CircularProgressIndicator(),);
+            case ConnectionState.done:
+              if(snapshot.hasError){
+                return Column(
+                  children: [
+                    ProfileCard(child: Row(mainAxisAlignment:  MainAxisAlignment.center,spacing: 10,children: [
+                      ElevatedButton(onPressed: (){
+                        showDialog(context: context, builder: (context){
+                          return StatefulBuilder(
+                            builder: (context, state) {
+                              dialogSetState = state;
+                              return AlertDialog(
+                                title: Text("登录"),
+                                content: IntrinsicHeight(
+                                  child: Column(spacing: 10.0,children: [
+                                    TextField(controller: _dialogUsernameTextController, enabled: !_loggingIn, decoration: InputDecoration(border: UnderlineInputBorder(), labelText: "用户名", errorText: _usernameValidation ? null : "用户名不可为空"),),
+                                    TextField(controller: _dialogPasswordTextController,enabled: !_loggingIn, obscureText: true,decoration: InputDecoration(border: UnderlineInputBorder(), labelText: "密码"),)
+                                  ],),
+                                ),
+                                actions: [
+                                  TextButton(onPressed: _loggingIn ? null : () {
+                                    Navigator.of(context).pop();
+                                  }, child: Text("取消")
+                                  ),
+                                  TextButton(onPressed: _loggingIn || !allValidation ? null : ()async  {
+                                    state(() {
+                                      _loggingIn = true;
+                                    });
+                                    try{
+                                      await WebRequest.login(api: Singletons.apiAddress, username: _dialogUsernameTextController.text, password: _dialogPasswordTextController.text);
+                                      if(context.mounted){
+                                        Navigator.of(context).pop();
+                                      }
+                                    }catch(e){
+                                      if(context.mounted){
+                                        Navigator.of(context).pop();
+                                        showDialog(context: context, builder: (context){
+                                          return AlertDialog(
+                                            title: Text("错误"),
+                                            content: Text("$e"),
+                                            actions: [
+                                              TextButton(onPressed: (){
+                                                Navigator.of(context).pop();
+                                              }, child: Text("确定"))
+                                            ],
+                                          );
+                                        });
+
+                                      }
+                                    }
+
+                                    setState(() {
+                                      _loggingIn = false;
+                                    });
+
+                                  }, child: Text("登录"))
+                                ],
+                              );
+                            }
+                          );
+                        }).then((s){
+                          _loggingIn = false;
+                        });
+                      }, child: Text("登录")),
+                      ElevatedButton(onPressed: (){}, child: Text("注册")),
+
+                    ],))
+                  ],
+
+                );
+              }
+              return
+                Column(
+                  children: [
+                    ProfileCard(child: Row(spacing: 20,children: [
+                      Container(constraints: BoxConstraints(maxWidth: 75, maxHeight: 75),color: Colors.red, child: Image(image: NetworkImage("${Singletons.apiAddress}/avatar?uuid=${snapshot.data!.uuid}")),),
+                      Expanded(flex: 3,
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
+                            Text(snapshot.data!.username, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w100),),
+                            Text(snapshot.data!.email)
+                          ],))
+                    ],))
+                  ],
+
+                );
+          }
+
+        }
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class TestPage extends StatefulWidget {
@@ -212,12 +353,15 @@ class TestPage extends StatefulWidget {
   State<TestPage> createState() => _TestPageState();
 }
 
-class _TestPageState extends State<TestPage> {
-  void _runTest() async {
-    await WebRequest.login("http://localhost:5298", "xiey0", "moyingren2015");
+class _TestPageState extends State<TestPage> with AutomaticKeepAliveClientMixin<TestPage> {
+  @override
+  bool get wantKeepAlive => true;
+  Future<User> _runTest() async {
+    await WebRequest.login(api: Singletons.apiAddress, username: "xiey0", password:  "moyingren2015");
+
     final pref = await SharedPreferences.getInstance();
 
-    final s = await WebRequest.fetchUser("http://localhost:5298", pref.getString(".AspNetCore.Session=")!);
+    final s = await WebRequest.fetchUser(api: "http://localhost:5298");
 
     if (kDebugMode) {
       print("$s, ${pref.getKeys().select((s, i){
@@ -227,16 +371,41 @@ class _TestPageState extends State<TestPage> {
         };
       })}");
     }
+    return s;
   }
-  @override
-  void initState() {
-    super.initState();
-    _runTest();
+  Future<void> _dialogBuilder(BuildContext context, e){
+    return showDialog(context: context, builder: (context) {
+      return AlertDialog(
+        title: Text("错误"),
+        content: Text("$e"),
+        actions: [
+          TextButton(onPressed: ()=>Navigator.of(context).pop(), child: Text("确定"))
+        ],
+      );
+    });
   }
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Center(
-      child: Text("This is a test page."),
+      child: FutureBuilder(future: _runTest(), builder: (context, snapshot) {
+        switch(snapshot.connectionState){
+          case ConnectionState.waiting:
+            return CircularProgressIndicator();
+          case ConnectionState.done:
+            if(snapshot.hasError){
+              WidgetsBinding.instance.addPostFrameCallback((_){
+                _dialogBuilder(context, snapshot.error);
+              });
+              return CircularProgressIndicator();
+
+            }else{
+              return Text("测试成功: ${snapshot.data}");
+            }
+          case _:
+            return Text("未知状态");
+        }
+      })
     );
   }
 }
